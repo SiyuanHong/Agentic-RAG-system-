@@ -11,6 +11,11 @@ build/
 # Node
 node_modules/
 dist/
+dist-ssr/
+*.local
+*.log
+pnpm-debug.log*
+npm-debug.log*
 
 # Environment
 .env
