@@ -14,6 +14,7 @@ from app.core.security import get_current_user
 from app.models.conversation import Conversation
 from app.models.knowledge_base import KnowledgeBase
 from app.models.message import Message, MessageRole
+from app.models.skill import Skill
 from app.models.user import User
 from app.core.database import async_session_factory
 from app.services.cache import cache_lookup, cache_store
@@ -41,6 +42,7 @@ class MessageResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     query: str
+    skill_id: uuid.UUID | None = None
 
 
 @router.post("/conversations", response_model=ConversationResponse, status_code=201)
@@ -166,14 +168,30 @@ async def stream_chat(
     kb_id = str(conv.kb_id)
     user_id = str(user.id)
 
+    # Resolve skill if provided
+    skill_content = ""
+    if body.skill_id:
+        result = await session.execute(
+            select(Skill).where(
+                Skill.id == body.skill_id, Skill.user_id == user.id
+            )
+        )
+        skill = result.scalar_one_or_none()
+        if not skill:
+            raise HTTPException(status_code=404, detail="Skill not found")
+        skill_content = skill.content
+
     async def event_generator() -> AsyncGenerator[str, None]:
-        # Check semantic cache
-        try:
-            query_embedding = (await embed_texts([body.query]))[0]
-            cached = await cache_lookup(query_embedding, kb_id)
-        except Exception:
-            query_embedding = None
-            cached = None
+        # Check semantic cache (skip when skill is selected to avoid cross-skill pollution)
+        query_embedding = None
+        cached = None
+        if not skill_content:
+            try:
+                query_embedding = (await embed_texts([body.query]))[0]
+                cached = await cache_lookup(query_embedding, kb_id)
+            except Exception:
+                query_embedding = None
+                cached = None
 
         if cached:
             yield f"data: {json.dumps({'event': 'cache_hit', 'data': 'Using cached answer'})}\n\n"
@@ -194,7 +212,7 @@ async def stream_chat(
         # Run agent pipeline
         final_answer = ""
         sources_list: list[dict] | None = None
-        async for event in run_agent(body.query, kb_id, user_id):
+        async for event in run_agent(body.query, kb_id, user_id, skill_content):
             if event["event"] == "answer":
                 final_answer = event["data"]
             elif event["event"] == "sources":

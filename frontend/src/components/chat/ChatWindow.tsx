@@ -5,6 +5,7 @@ import { parseSSE } from '@/lib/sse'
 import { queryClient } from '@/lib/queryClient'
 import { MessageBubble } from './MessageBubble'
 import { ThinkingStream, type ThinkingStep } from './ThinkingStream'
+import { SkillSelector } from '@/components/skills/SkillSelector'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -20,6 +21,7 @@ export function ChatWindow({ kbId, conversationId }: { kbId: string; conversatio
   const [isCacheHit, setIsCacheHit] = useState(false)
   const [input, setInput] = useState('')
   const [currentSources, setCurrentSources] = useState<SourceInfo[]>([])
+  const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const messages = [...(serverMessages ?? []), ...pendingMessages]
@@ -53,7 +55,7 @@ export function ChatWindow({ kbId, conversationId }: { kbId: string; conversatio
     setIsStreaming(true)
 
     try {
-      const response = await streamChat(conversationId, query)
+      const response = await streamChat(conversationId, query, selectedSkillId)
       let finalAnswer = ''
 
       let streamSources: SourceInfo[] = []
@@ -147,6 +149,10 @@ export function ChatWindow({ kbId, conversationId }: { kbId: string; conversatio
 
       <div className="border-t p-4">
         <form onSubmit={handleSend} className="mx-auto flex max-w-3xl gap-2">
+          <SkillSelector
+            selectedSkillId={selectedSkillId}
+            onSelect={setSelectedSkillId}
+          />
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}

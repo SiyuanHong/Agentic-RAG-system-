@@ -4,6 +4,7 @@ from app.models.document import Document, DocumentStatus
 from app.models.chunk import Chunk
 from app.models.conversation import Conversation
 from app.models.message import Message, MessageRole
+from app.models.skill import Skill
 
 __all__ = [
     "User",
@@ -14,4 +15,5 @@ __all__ = [
     "Conversation",
     "Message",
     "MessageRole",
+    "Skill",
 ]

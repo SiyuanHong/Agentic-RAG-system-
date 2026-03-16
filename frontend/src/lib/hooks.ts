@@ -5,6 +5,7 @@ import {
   fetchDocuments,
   fetchConversations,
   fetchMessages,
+  fetchSkills,
 } from './api'
 
 export function useKBs() {
@@ -48,5 +49,12 @@ export function useMessages(conversationId: string) {
   return useQuery({
     queryKey: ['messages', conversationId],
     queryFn: () => fetchMessages(conversationId),
+  })
+}
+
+export function useSkills() {
+  return useQuery({
+    queryKey: ['skills'],
+    queryFn: fetchSkills,
   })
 }

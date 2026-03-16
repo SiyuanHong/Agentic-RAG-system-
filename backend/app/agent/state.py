@@ -14,3 +14,4 @@ class AgentState(TypedDict):
     iteration_count: int
     kb_id: str
     user_id: str
+    skill_content: str

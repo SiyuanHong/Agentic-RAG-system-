@@ -8,6 +8,7 @@ from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
 from app.api.documents import router as documents_router
 from app.api.knowledge_bases import router as kb_router
+from app.api.skills import router as skills_router
 from app.services.cache import init_cache_index
 
 logging.basicConfig(level=logging.INFO)
@@ -41,6 +42,7 @@ app.include_router(auth_router)
 app.include_router(kb_router)
 app.include_router(documents_router)
 app.include_router(chat_router)
+app.include_router(skills_router)
 
 
 @app.get("/health")

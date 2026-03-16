@@ -11,6 +11,14 @@ export type MessageResponse = components['schemas']['MessageResponse']
 export type MessageRole = components['schemas']['MessageRole']
 export type AuthResponse = components['schemas']['AuthResponse']
 
+// ─── Skill types (manual — not in OpenAPI schema yet) ──
+export interface SkillResponse {
+  id: string
+  name: string
+  filename: string
+  created_at: string | null
+}
+
 // SSE event type (not in OpenAPI schema — backend streams these)
 export interface SSEEvent {
   event: 'thinking' | 'cache_hit' | 'token' | 'answer' | 'sources' | 'done'
@@ -132,6 +140,48 @@ export async function deleteDocument(kbId: string, docId: string) {
   if (!res.ok) throw new Error('Failed to delete document')
 }
 
+// ─── Skills ───────────────────────────────────────────
+
+export async function fetchSkills(): Promise<SkillResponse[]> {
+  const token = getToken()
+  const res = await fetch('/api/skills/', {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+  if (!res.ok) throw new Error('Failed to fetch skills')
+  return res.json()
+}
+
+export async function uploadSkill(file: File): Promise<SkillResponse> {
+  const token = getToken()
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await fetch('/api/skills/', {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: fd,
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: 'Upload failed' }))
+    throw new Error(body.detail || 'Failed to upload skill')
+  }
+  return res.json()
+}
+
+export async function deleteSkill(skillId: string): Promise<void> {
+  const token = getToken()
+  const res = await fetch(`/api/skills/${skillId}`, {
+    method: 'DELETE',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+  if (!res.ok) throw new Error('Failed to delete skill')
+}
+
 // ─── Conversations ─────────────────────────────────────
 
 export async function fetchConversations(kbId: string) {
@@ -173,15 +223,18 @@ export async function fetchMessages(conversationId: string) {
 
 // ─── Chat Stream (SSE — raw fetch, not openapi-fetch) ──
 
-export async function streamChat(conversationId: string, query: string): Promise<Response> {
+export async function streamChat(conversationId: string, query: string, skillId?: string | null): Promise<Response> {
   const token = getToken()
+  const body: Record<string, unknown> = { query }
+  if (skillId) body.skill_id = skillId
+
   const res = await fetch(`/api/chat/conversations/${conversationId}/stream`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify(body),
   })
 
   if (res.status === 401) {

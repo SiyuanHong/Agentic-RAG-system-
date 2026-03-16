@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect, useNavigate } from '@tanstack/react-router'
 import { getToken, clearToken } from '@/lib/auth'
 import { KBSelector } from '@/components/knowledge-base/KBSelector'
+import { SkillManager } from '@/components/skills/SkillManager'
 import { BookOpen, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -34,6 +35,8 @@ function AppLayout() {
         <Separator className="bg-sidebar-border" />
         <ScrollArea className="flex-1">
           <KBSelector />
+          <Separator className="bg-sidebar-border" />
+          <SkillManager />
         </ScrollArea>
         <Separator className="bg-sidebar-border" />
         <div className="p-2">

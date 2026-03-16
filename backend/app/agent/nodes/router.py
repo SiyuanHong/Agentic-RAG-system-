@@ -5,7 +5,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.agent.llm import router_llm
 from app.agent.state import AgentState
 
-ROUTER_SYSTEM_PROMPT = """You are an intent classifier for a Finance/Legal document Q&A system.
+ROUTER_SYSTEM_PROMPT = """You are an intent classifier for a document Q&A system.
 
 Given the user's message, classify the intent as one of:
 - "factual_query": The user is asking a question that requires retrieving information from documents.

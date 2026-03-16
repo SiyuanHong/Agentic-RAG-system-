@@ -68,7 +68,7 @@ graph = workflow.compile()
 
 
 async def run_agent(
-    query: str, kb_id: str, user_id: str
+    query: str, kb_id: str, user_id: str, skill_content: str = ""
 ) -> AsyncGenerator[dict, None]:
     initial_state: AgentState = {
         "messages": [],
@@ -80,6 +80,7 @@ async def run_agent(
         "iteration_count": 0,
         "kb_id": kb_id,
         "user_id": user_id,
+        "skill_content": skill_content,
     }
 
     final_answer = ""

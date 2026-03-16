@@ -5,19 +5,27 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.agent.llm import checker_llm
 from app.agent.state import AgentState
 
-CHECKER_SYSTEM_PROMPT = """You are a quality auditor for a Finance/Legal document Q&A system.
+_CHECKER_BASE = """You are a quality auditor for a document Q&A system.
 
 Evaluate the given answer against the source chunks. Check for:
 1. **Hallucination**: Claims in the answer that are NOT supported by ANY source chunk.
 2. **Insufficient data**: The source chunks do not adequately cover the user's question.
-
+{skill_section}
 Respond with ONLY a JSON object:
-{"result": "pass", "feedback": ""}
+{{"result": "pass", "feedback": ""}}
 OR
-{"result": "hallucination", "feedback": "Explain what claims are not supported by sources"}
+{{"result": "hallucination", "feedback": "Explain what claims are not supported by sources"}}
 OR
-{"result": "insufficient_data", "feedback": "Explain what information is missing from the sources"}
+{{"result": "insufficient_data", "feedback": "Explain what information is missing from the sources"}}
 """
+
+
+def build_checker_prompt(skill_content: str) -> str:
+    if skill_content:
+        skill_section = f"3. **Skill compliance**: The answer should follow the skill instructions below:\n\n{skill_content}\n"
+    else:
+        skill_section = ""
+    return _CHECKER_BASE.format(skill_section=skill_section)
 
 
 async def checker_node(state: AgentState) -> dict:
@@ -36,8 +44,9 @@ async def checker_node(state: AgentState) -> dict:
         f"Answer to evaluate:\n{state['answer']}"
     )
 
+    system_prompt = build_checker_prompt(state.get("skill_content", ""))
     messages = [
-        SystemMessage(content=CHECKER_SYSTEM_PROMPT),
+        SystemMessage(content=system_prompt),
         HumanMessage(content=user_msg),
     ]
     response = await checker_llm.ainvoke(messages)
