@@ -74,13 +74,15 @@ async def create_conversation(
 @router.get("/conversations", response_model=list[ConversationResponse])
 async def list_conversations(
     kb_id: uuid.UUID | None = None,
+    limit: int = 50,
+    offset: int = 0,
     auth: tuple[User, AsyncSession] = Depends(get_current_user),
 ):
     user, session = auth
     stmt = select(Conversation).where(Conversation.user_id == user.id)
     if kb_id:
         stmt = stmt.where(Conversation.kb_id == kb_id)
-    stmt = stmt.order_by(Conversation.created_at.desc())
+    stmt = stmt.order_by(Conversation.created_at.desc()).offset(offset).limit(min(limit, 100))
     result = await session.execute(stmt)
     convs = result.scalars().all()
     return [
