@@ -24,6 +24,7 @@ router = APIRouter(
 )
 
 UPLOAD_DIR = Path("uploads")
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc"}
 
 
 class DocumentResponse(BaseModel):
@@ -61,10 +62,17 @@ async def upload_document(
     user, session = auth
     await _verify_kb_access(kb_id, user, session)
 
+    # Validate file extension
+    ext = Path(file.filename or "file").suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file type '{ext}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+        )
+
     # Save file
     file_dir = UPLOAD_DIR / str(kb_id)
     file_dir.mkdir(parents=True, exist_ok=True)
-    ext = Path(file.filename or "file").suffix
     file_id = uuid.uuid4()
     file_path = file_dir / f"{file_id}{ext}"
 
@@ -174,7 +182,10 @@ async def get_document_file(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    file_path = Path(doc.file_path)
+    file_path = Path(doc.file_path).resolve()
+    upload_root = UPLOAD_DIR.resolve()
+    if not str(file_path).startswith(str(upload_root)):
+        raise HTTPException(status_code=403, detail="Access denied")
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found on disk")
 
