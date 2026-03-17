@@ -85,12 +85,15 @@ async def upload_document(
     await session.refresh(doc)
 
     # Enqueue ingestion job
+    redis = None
     try:
         redis = await _get_redis_pool()
         await redis.enqueue_job("process_document", str(doc.id))
-        await redis.aclose()
     except Exception as e:
         logger.warning(f"Failed to enqueue ingestion job: {e}")
+    finally:
+        if redis:
+            await redis.aclose()
 
     return DocumentResponse(id=doc.id, filename=doc.filename, status=doc.status)
 
