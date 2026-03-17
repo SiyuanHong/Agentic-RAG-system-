@@ -1,4 +1,6 @@
+import asyncio
 import json
+import logging
 import uuid
 from collections.abc import AsyncGenerator
 
@@ -16,9 +18,11 @@ from app.models.knowledge_base import KnowledgeBase
 from app.models.message import Message, MessageRole
 from app.models.skill import Skill
 from app.models.user import User
-from app.core.database import async_session_factory
+from app.core.database import async_session_factory, set_rls_context
 from app.services.cache import cache_lookup, cache_store
 from app.services.embedding import embed_texts
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -70,13 +74,15 @@ async def create_conversation(
 @router.get("/conversations", response_model=list[ConversationResponse])
 async def list_conversations(
     kb_id: uuid.UUID | None = None,
+    limit: int = 50,
+    offset: int = 0,
     auth: tuple[User, AsyncSession] = Depends(get_current_user),
 ):
     user, session = auth
     stmt = select(Conversation).where(Conversation.user_id == user.id)
     if kb_id:
         stmt = stmt.where(Conversation.kb_id == kb_id)
-    stmt = stmt.order_by(Conversation.created_at.desc())
+    stmt = stmt.order_by(Conversation.created_at.desc()).offset(offset).limit(min(limit, 100))
     result = await session.execute(stmt)
     convs = result.scalars().all()
     return [
@@ -182,74 +188,80 @@ async def stream_chat(
         skill_content = skill.content
 
     async def event_generator() -> AsyncGenerator[str, None]:
-        # Check semantic cache (skip when skill is selected to avoid cross-skill pollution)
-        query_embedding = None
-        cached = None
-        if not skill_content:
-            try:
-                query_embedding = (await embed_texts([body.query]))[0]
-                cached = await cache_lookup(query_embedding, kb_id)
-            except Exception:
-                query_embedding = None
-                cached = None
+        try:
+            # Check semantic cache (skip when skill is selected to avoid cross-skill pollution)
+            query_embedding = None
+            cached = None
+            if not skill_content:
+                try:
+                    query_embedding = (await embed_texts([body.query]))[0]
+                    cached = await cache_lookup(query_embedding, kb_id)
+                except Exception:
+                    query_embedding = None
+                    cached = None
 
-        if cached:
-            yield f"data: {json.dumps({'event': 'cache_hit', 'data': 'Using cached answer'})}\n\n"
-            yield f"data: {json.dumps({'event': 'token', 'data': cached})}\n\n"
+            if cached:
+                yield f"data: {json.dumps({'event': 'cache_hit', 'data': 'Using cached answer'})}\n\n"
+                yield f"data: {json.dumps({'event': 'token', 'data': cached})}\n\n"
+                # Save assistant message
+                async with async_session_factory() as s:
+                    await set_rls_context(s, user_id)
+                    assistant_msg = Message(
+                        role=MessageRole.ASSISTANT.value,
+                        content=cached,
+                        conversation_id=conversation_id,
+                        user_id=user.id,
+                    )
+                    s.add(assistant_msg)
+                    await s.commit()
+                yield f"data: {json.dumps({'event': 'done'})}\n\n"
+                return
+
+            # Run agent pipeline
+            final_answer = ""
+            sources_list: list[dict] | None = None
+            async for event in run_agent(body.query, kb_id, user_id, skill_content):
+                if event["event"] == "answer":
+                    final_answer = event["data"]
+                elif event["event"] == "sources":
+                    try:
+                        sources_list = json.loads(event["data"])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                yield f"data: {json.dumps(event)}\n\n"
+
             # Save assistant message
             async with async_session_factory() as s:
+                await set_rls_context(s, user_id)
                 assistant_msg = Message(
                     role=MessageRole.ASSISTANT.value,
-                    content=cached,
+                    content=final_answer,
+                    sources=sources_list,
                     conversation_id=conversation_id,
                     user_id=user.id,
                 )
                 s.add(assistant_msg)
+                # Update conversation title if first message
+                result = await s.execute(
+                    select(Conversation).where(Conversation.id == conversation_id)
+                )
+                c = result.scalar_one_or_none()
+                if c and not c.title:
+                    c.title = body.query[:100]
+                    s.add(c)
                 await s.commit()
-            yield f"data: {json.dumps({'event': 'done'})}\n\n"
-            return
 
-        # Run agent pipeline
-        final_answer = ""
-        sources_list: list[dict] | None = None
-        async for event in run_agent(body.query, kb_id, user_id, skill_content):
-            if event["event"] == "answer":
-                final_answer = event["data"]
-            elif event["event"] == "sources":
+            # Store in cache
+            if query_embedding and final_answer:
                 try:
-                    sources_list = json.loads(event["data"])
-                except (json.JSONDecodeError, TypeError):
-                    pass
-            yield f"data: {json.dumps(event)}\n\n"
+                    await cache_store(query_embedding, kb_id, final_answer)
+                except Exception:
+                    pass  # Cache store failure is non-critical
 
-        # Save assistant message
-        async with async_session_factory() as s:
-            assistant_msg = Message(
-                role=MessageRole.ASSISTANT.value,
-                content=final_answer,
-                sources=sources_list,
-                conversation_id=conversation_id,
-                user_id=user.id,
-            )
-            s.add(assistant_msg)
-            # Update conversation title if first message
-            result = await s.execute(
-                select(Conversation).where(Conversation.id == conversation_id)
-            )
-            c = result.scalar_one_or_none()
-            if c and not c.title:
-                c.title = body.query[:100]
-                s.add(c)
-            await s.commit()
-
-        # Store in cache
-        if query_embedding and final_answer:
-            try:
-                await cache_store(query_embedding, kb_id, final_answer)
-            except Exception:
-                pass  # Cache store failure is non-critical
-
-        yield f"data: {json.dumps({'event': 'done'})}\n\n"
+            yield f"data: {json.dumps({'event': 'done'})}\n\n"
+        except asyncio.CancelledError:
+            logger.info("SSE stream cancelled by client for conversation %s", conversation_id)
+            return
 
     return StreamingResponse(
         event_generator(),

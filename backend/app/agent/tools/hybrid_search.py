@@ -45,7 +45,7 @@ async def hybrid_search(
 
         # Vector search — top 15
         # pgvector expects '[0.1,0.2,...]' string format
-        vec_literal = "[" + ",".join(str(x) for x in query_embedding) + "]"
+        vec_literal = "[" + ",".join(f"{x:.8f}" for x in query_embedding) + "]"
         vector_sql = text("""
             SELECT id::text, content, chunk_metadata,
                    embedding <=> :query_vec AS distance

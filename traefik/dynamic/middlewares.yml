@@ -9,6 +9,7 @@ http:
         stsPreload: true
         stsSeconds: 31536000
         referrerPolicy: "strict-origin-when-cross-origin"
+        contentSecurityPolicy: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'"
 
     rate-limit:
       rateLimit:
@@ -21,3 +22,9 @@ http:
         average: 30
         burst: 20
         period: 1s
+
+    auth-rate-limit:
+      rateLimit:
+        average: 5
+        burst: 10
+        period: 1m

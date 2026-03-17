@@ -1,9 +1,12 @@
 import json
+import logging
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.agent.llm import checker_llm
 from app.agent.state import AgentState
+
+logger = logging.getLogger(__name__)
 
 _CHECKER_BASE = """You are a quality auditor for a document Q&A system.
 
@@ -68,8 +71,12 @@ async def checker_node(state: AgentState) -> dict:
             "iteration_count": iteration,
         }
     except (json.JSONDecodeError, TypeError):
+        logger.warning(
+            "Checker LLM returned unparseable JSON, treating as insufficient_data: %s",
+            response.content[:200],
+        )
         return {
-            "checker_result": "pass",
-            "checker_feedback": "",
+            "checker_result": "insufficient_data",
+            "checker_feedback": "Checker output was not valid JSON; treating as insufficient data for safety.",
             "iteration_count": iteration,
         }

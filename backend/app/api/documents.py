@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import func, select
 
 from app.core.config import settings
+from app.services.cache import invalidate_cache_for_kb
 
 logger = logging.getLogger(__name__)
 from app.core.security import get_current_user
@@ -24,6 +25,7 @@ router = APIRouter(
 )
 
 UPLOAD_DIR = Path("uploads")
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc"}
 
 
 class DocumentResponse(BaseModel):
@@ -61,10 +63,17 @@ async def upload_document(
     user, session = auth
     await _verify_kb_access(kb_id, user, session)
 
+    # Validate file extension
+    ext = Path(file.filename or "file").suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file type '{ext}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+        )
+
     # Save file
     file_dir = UPLOAD_DIR / str(kb_id)
     file_dir.mkdir(parents=True, exist_ok=True)
-    ext = Path(file.filename or "file").suffix
     file_id = uuid.uuid4()
     file_path = file_dir / f"{file_id}{ext}"
 
@@ -85,12 +94,15 @@ async def upload_document(
     await session.refresh(doc)
 
     # Enqueue ingestion job
+    redis = None
     try:
         redis = await _get_redis_pool()
         await redis.enqueue_job("process_document", str(doc.id))
-        await redis.aclose()
     except Exception as e:
         logger.warning(f"Failed to enqueue ingestion job: {e}")
+    finally:
+        if redis:
+            await redis.aclose()
 
     return DocumentResponse(id=doc.id, filename=doc.filename, status=doc.status)
 
@@ -171,7 +183,10 @@ async def get_document_file(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    file_path = Path(doc.file_path)
+    file_path = Path(doc.file_path).resolve()
+    upload_root = UPLOAD_DIR.resolve()
+    if not str(file_path).startswith(str(upload_root)):
+        raise HTTPException(status_code=403, detail="Access denied")
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found on disk")
 
@@ -226,3 +241,9 @@ async def delete_document(
 
     await session.delete(doc)
     await session.commit()
+
+    # Invalidate cached answers for this KB since content changed
+    try:
+        await invalidate_cache_for_kb(str(kb_id))
+    except Exception:
+        pass

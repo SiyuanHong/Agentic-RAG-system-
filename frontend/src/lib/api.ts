@@ -1,6 +1,6 @@
 import createClient from 'openapi-fetch'
 import type { paths, components } from './api-schema'
-import { getToken, clearToken } from './auth'
+import { getToken, clearToken, isTokenValid } from './auth'
 
 // Re-export schema types for convenience
 export type KBResponse = components['schemas']['KBResponse']
@@ -37,9 +37,14 @@ const client = createClient<paths>({
   baseUrl: '',
 })
 
-// Auth middleware: attach JWT + handle 401
+// Auth middleware: attach JWT + handle 401 + proactive expiry check
 client.use({
   async onRequest({ request }) {
+    if (!isTokenValid()) {
+      clearToken()
+      window.location.href = '/login'
+      throw new Error('Token expired')
+    }
     const token = getToken()
     if (token) {
       request.headers.set('Authorization', `Bearer ${token}`)

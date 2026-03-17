@@ -63,3 +63,11 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+if settings.SECRET_KEY == "change-me":
+    import warnings
+    warnings.warn(
+        "SECRET_KEY is set to the default 'change-me'. "
+        "Set a strong SECRET_KEY in .env before deploying to production.",
+        stacklevel=1,
+    )

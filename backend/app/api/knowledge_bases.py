@@ -41,6 +41,8 @@ async def create_kb(
 @router.get("/", response_model=list[KBResponse])
 async def list_kbs(
     auth: tuple[User, AsyncSession] = Depends(get_current_user),
+    limit: int = 50,
+    offset: int = 0,
 ):
     user, session = auth
     stmt = (
@@ -51,6 +53,8 @@ async def list_kbs(
         .outerjoin(Document, Document.kb_id == KnowledgeBase.id)
         .where(KnowledgeBase.user_id == user.id)
         .group_by(KnowledgeBase.id)
+        .offset(offset)
+        .limit(min(limit, 100))
     )
     results = await session.execute(stmt)
     return [
