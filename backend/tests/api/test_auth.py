@@ -45,7 +45,7 @@ async def test_register_success(client, mock_session):
     )
     mock_session.refresh = AsyncMock(side_effect=lambda u: setattr(u, "id", new_user.id))
 
-    resp = await client.post("/auth/register", json={"email": "new@example.com", "password": "pass123"})
+    resp = await client.post("/auth/register", json={"email": "new@example.com", "password": "StrongPass1234"})
     assert resp.status_code == 201
     data = resp.json()
     assert "access_token" in data
@@ -60,7 +60,7 @@ async def test_register_duplicate_email(client, mock_session):
     mock_result.scalar_one_or_none.return_value = existing_user
     mock_session.execute = AsyncMock(return_value=mock_result)
 
-    resp = await client.post("/auth/register", json={"email": "dup@example.com", "password": "pass123"})
+    resp = await client.post("/auth/register", json={"email": "dup@example.com", "password": "StrongPass1234"})
     assert resp.status_code == 409
 
 

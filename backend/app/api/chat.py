@@ -16,7 +16,7 @@ from app.models.knowledge_base import KnowledgeBase
 from app.models.message import Message, MessageRole
 from app.models.skill import Skill
 from app.models.user import User
-from app.core.database import async_session_factory
+from app.core.database import async_session_factory, set_rls_context
 from app.services.cache import cache_lookup, cache_store
 from app.services.embedding import embed_texts
 
@@ -198,6 +198,7 @@ async def stream_chat(
             yield f"data: {json.dumps({'event': 'token', 'data': cached})}\n\n"
             # Save assistant message
             async with async_session_factory() as s:
+                await set_rls_context(s, user_id)
                 assistant_msg = Message(
                     role=MessageRole.ASSISTANT.value,
                     content=cached,
@@ -224,6 +225,7 @@ async def stream_chat(
 
         # Save assistant message
         async with async_session_factory() as s:
+            await set_rls_context(s, user_id)
             assistant_msg = Message(
                 role=MessageRole.ASSISTANT.value,
                 content=final_answer,
