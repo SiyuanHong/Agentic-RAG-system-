@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import func, select
 
 from app.core.config import settings
+from app.services.cache import invalidate_cache_for_kb
 
 logger = logging.getLogger(__name__)
 from app.core.security import get_current_user
@@ -240,3 +241,9 @@ async def delete_document(
 
     await session.delete(doc)
     await session.commit()
+
+    # Invalidate cached answers for this KB since content changed
+    try:
+        await invalidate_cache_for_kb(str(kb_id))
+    except Exception:
+        pass

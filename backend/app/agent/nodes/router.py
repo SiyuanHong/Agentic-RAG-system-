@@ -23,8 +23,8 @@ or
 {"intent": "factual_query"}
 """
 
-# Regex to extract a JSON object from LLM output that may contain extra text
-_JSON_RE = re.compile(r"\{[^{}]*\}")
+# Regex to extract a JSON object from LLM output (supports one level of nesting)
+_JSON_RE = re.compile(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}")
 
 
 def _parse_router_response(raw: str) -> dict:

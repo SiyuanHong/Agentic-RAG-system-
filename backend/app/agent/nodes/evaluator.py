@@ -78,10 +78,10 @@ async def eval_answer_node(state: AgentState) -> dict:
             "ragas_feedback": ragas_feedback,
         }
     except Exception as e:
-        logger.warning(f"Ragas evaluation failed, defaulting to pass: {e}")
+        logger.warning(f"Ragas evaluation failed, defaulting to low scores for safety: {e}")
         return {
-            "ragas_faithfulness": 1.0,
-            "ragas_answer_relevancy": 1.0,
-            "ragas_context_precision": 1.0,
-            "ragas_feedback": "",
+            "ragas_faithfulness": 0.0,
+            "ragas_answer_relevancy": 0.0,
+            "ragas_context_precision": 0.0,
+            "ragas_feedback": f"Ragas evaluation failed: {e}",
         }

@@ -109,6 +109,23 @@ async def cache_lookup(
     return None
 
 
+async def invalidate_cache_for_kb(kb_id: str) -> None:
+    """Delete all cached answers for a given knowledge base."""
+    r = await get_redis()
+    try:
+        cursor = 0
+        while True:
+            cursor, keys = await r.scan(cursor, match=f"{PREFIX}*", count=100)
+            for key in keys:
+                stored_kb = await r.hget(key, "kb_id")
+                if stored_kb and (stored_kb.decode() if isinstance(stored_kb, bytes) else stored_kb) == kb_id:
+                    await r.delete(key)
+            if cursor == 0:
+                break
+    except Exception:
+        pass  # Cache invalidation is best-effort
+
+
 async def cache_store(
     query_embedding: list[float], kb_id: str, answer: str, ttl: int = 3600
 ) -> None:

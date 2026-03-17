@@ -94,7 +94,8 @@ async def test_checker_node_invalid_json(mock_llm):
         "ragas_feedback": "",
     }
     result = await checker_node(state)
-    assert result["checker_result"] == "pass"
+    assert result["checker_result"] == "insufficient_data"
+    assert "not valid JSON" in result["checker_feedback"]
     assert result["iteration_count"] == 1
 
 
