@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     PHOENIX_COLLECTOR_ENDPOINT: str = "http://localhost:4317"
     PHOENIX_ENABLED: bool = True
 
+    # CORS
+    CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost"]
+
     # Ragas evaluation
     RAGAS_ENABLED: bool = True
     RAGAS_FAITHFULNESS_BYPASS_THRESHOLD: float = 0.9

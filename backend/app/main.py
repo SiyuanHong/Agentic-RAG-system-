@@ -9,6 +9,7 @@ from app.api.chat import router as chat_router
 from app.api.documents import router as documents_router
 from app.api.knowledge_bases import router as kb_router
 from app.api.skills import router as skills_router
+from app.core.config import settings
 from app.core.tracing import init_tracing
 from app.services.cache import init_cache_index
 
@@ -35,7 +36,7 @@ app = FastAPI(title="Agentic RAG", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

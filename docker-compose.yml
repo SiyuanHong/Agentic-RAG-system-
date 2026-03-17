@@ -1,42 +1,69 @@
 services:
-  db:
-    image: paradedb/paradedb:latest
+  traefik:
+    image: traefik:v3.3
     ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: agentic_rag
+      - "80:80"
+      - "443:443"
     volumes:
-      - pgdata:/var/lib/postgresql
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      - traefik-acme:/acme
+    networks:
+      - frontend
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.routers.frontend.priority=1"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      - "traefik.http.routers.frontend.middlewares=security-headers@file,rate-limit@file"
+    networks:
+      - frontend
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/agentic_rag
+      DATABASE_URL_SYNC: postgresql://postgres:postgres@db:5432/agentic_rag
+      REDIS_URL: redis://redis:6379
+      PHOENIX_COLLECTOR_ENDPOINT: http://phoenix:4317
+    volumes:
+      - backend-uploads:/app/uploads
+    labels:
+      - "traefik.enable=true"
+      # API routes
+      - "traefik.http.routers.backend.rule=PathPrefix(`/api`) || PathPrefix(`/auth`) || Path(`/health`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.routers.backend.priority=10"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+      - "traefik.http.routers.backend.middlewares=security-headers@file,api-rate-limit@file"
+      # SSE streaming support
+      - "traefik.http.services.backend.loadbalancer.responseForwarding.flushInterval=100ms"
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
       timeout: 5s
       retries: 5
-
-  redis:
-    image: redis/redis-stack:latest
-    ports:
-      - "6379:6379"
-      - "8001:8001"
-    volumes:
-      - redisdata:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  phoenix:
-    image: arizephoenix/phoenix:latest
-    ports:
-      - "6006:6006"
-      - "4317:4317"
-    environment:
-      PHOENIX_WORKING_DIR: /data
-    volumes:
-      - phoenixdata:/data
+      start_period: 10s
+    restart: unless-stopped
 
   worker:
     build: ./backend
@@ -48,7 +75,11 @@ services:
       REDIS_URL: redis://redis:6379
       PHOENIX_COLLECTOR_ENDPOINT: http://phoenix:4317
     volumes:
-      - ./backend/uploads:/app/uploads
+      - backend-uploads:/app/uploads
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - backend
     depends_on:
       db:
         condition: service_healthy
@@ -56,7 +87,68 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  db:
+    image: paradedb/paradedb:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: agentic_rag
+    volumes:
+      - pgdata:/var/lib/postgresql
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis/redis-stack:latest
+    volumes:
+      - redisdata:/data
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    environment:
+      PHOENIX_WORKING_DIR: /data
+    volumes:
+      - phoenixdata:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.phoenix.rule=PathPrefix(`/phoenix`)"
+      - "traefik.http.routers.phoenix.entrypoints=web"
+      - "traefik.http.routers.phoenix.priority=10"
+      - "traefik.http.services.phoenix.loadbalancer.server.port=6006"
+      - "traefik.http.routers.phoenix.middlewares=phoenix-strip@docker"
+      - "traefik.http.middlewares.phoenix-strip.stripprefix.prefixes=/phoenix"
+    networks:
+      - frontend
+      - backend
+    restart: unless-stopped
+
 volumes:
   pgdata:
   redisdata:
   phoenixdata:
+  traefik-acme:
+  backend-uploads:
+
+networks:
+  frontend:
+    name: agentic-rag-frontend
+  backend:
+    name: agentic-rag-backend
