@@ -49,5 +49,14 @@ class Settings(BaseSettings):
     # Tokenizer
     TIKTOKEN_ENCODING: str = "cl100k_base"
 
+    # Phoenix tracing
+    PHOENIX_COLLECTOR_ENDPOINT: str = "http://localhost:4317"
+    PHOENIX_ENABLED: bool = True
+
+    # Ragas evaluation
+    RAGAS_ENABLED: bool = True
+    RAGAS_FAITHFULNESS_BYPASS_THRESHOLD: float = 0.9
+    RAGAS_LLM_MODEL: str = "gpt-4o-mini"
+
 
 settings = Settings()

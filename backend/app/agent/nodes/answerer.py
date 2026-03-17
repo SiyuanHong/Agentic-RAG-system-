@@ -49,7 +49,8 @@ async def answerer_node(state: AgentState) -> dict:
     user_msg = f"Question: {state['query']}\n\nContext:\n{context}"
 
     if state.get("checker_feedback"):
-        user_msg += f"\n\nPrevious feedback from checker (please revise):\n{state['checker_feedback']}"
+        user_msg += f"\n\nYour previous answer:\n{state.get('answer', '')}"
+        user_msg += f"\n\nChecker feedback (revise your answer to address this):\n{state['checker_feedback']}"
 
     system_prompt = build_answerer_prompt(state.get("skill_content", ""))
     messages = [

@@ -7,9 +7,11 @@ from langgraph.graph import END, StateGraph
 
 from app.agent.nodes.answerer import answerer_node
 from app.agent.nodes.checker import checker_node
+from app.agent.nodes.evaluator import eval_answer_node
 from app.agent.nodes.router import router_node
 from app.agent.state import AgentState
 from app.agent.tools.hybrid_search import hybrid_search
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,12 @@ def route_after_router(state: AgentState) -> str:
     return "retrieve"
 
 
+def route_after_eval(state: AgentState) -> str:
+    if state.get("ragas_faithfulness", 0.0) > settings.RAGAS_FAITHFULNESS_BYPASS_THRESHOLD:
+        return END
+    return "checker"
+
+
 def route_after_checker(state: AgentState) -> str:
     result = state.get("checker_result", "pass")
     iteration = state.get("iteration_count", 0)
@@ -52,12 +60,14 @@ workflow = StateGraph(AgentState)
 workflow.add_node("router", router_node)
 workflow.add_node("retrieve", retrieve_node)
 workflow.add_node("answerer", answerer_node)
+workflow.add_node("eval_answer", eval_answer_node)
 workflow.add_node("checker", checker_node)
 
 workflow.set_entry_point("router")
 workflow.add_conditional_edges("router", route_after_router, {END: END, "retrieve": "retrieve"})
 workflow.add_edge("retrieve", "answerer")
-workflow.add_edge("answerer", "checker")
+workflow.add_edge("answerer", "eval_answer")
+workflow.add_conditional_edges("eval_answer", route_after_eval, {END: END, "checker": "checker"})
 workflow.add_conditional_edges(
     "checker",
     route_after_checker,
@@ -81,6 +91,10 @@ async def run_agent(
         "kb_id": kb_id,
         "user_id": user_id,
         "skill_content": skill_content,
+        "ragas_faithfulness": 0.0,
+        "ragas_answer_relevancy": 0.0,
+        "ragas_context_precision": 0.0,
+        "ragas_feedback": "",
     }
 
     final_answer = ""

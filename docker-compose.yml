@@ -28,6 +28,16 @@ services:
       timeout: 5s
       retries: 5
 
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    ports:
+      - "6006:6006"
+      - "4317:4317"
+    environment:
+      PHOENIX_WORKING_DIR: /data
+    volumes:
+      - phoenixdata:/data
+
   worker:
     build: ./backend
     command: uv run arq app.workers.ingestion_worker.WorkerSettings
@@ -36,6 +46,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/agentic_rag
       DATABASE_URL_SYNC: postgresql://postgres:postgres@db:5432/agentic_rag
       REDIS_URL: redis://redis:6379
+      PHOENIX_COLLECTOR_ENDPOINT: http://phoenix:4317
     volumes:
       - ./backend/uploads:/app/uploads
     depends_on:
@@ -48,3 +59,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  phoenixdata:

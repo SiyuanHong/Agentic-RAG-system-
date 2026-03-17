@@ -44,6 +44,13 @@ async def checker_node(state: AgentState) -> dict:
         f"Answer to evaluate:\n{state['answer']}"
     )
 
+    ragas_feedback = state.get("ragas_feedback", "")
+    if ragas_feedback:
+        user_msg += f"\n\nAutomated evaluation scores:\n{ragas_feedback}"
+        user_msg += f"\nFaithfulness: {state.get('ragas_faithfulness', 'N/A')}"
+        user_msg += f"\nAnswer relevancy: {state.get('ragas_answer_relevancy', 'N/A')}"
+        user_msg += f"\nContext precision: {state.get('ragas_context_precision', 'N/A')}"
+
     system_prompt = build_checker_prompt(state.get("skill_content", ""))
     messages = [
         SystemMessage(content=system_prompt),

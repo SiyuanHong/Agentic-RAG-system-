@@ -15,3 +15,7 @@ class AgentState(TypedDict):
     kb_id: str
     user_id: str
     skill_content: str
+    ragas_faithfulness: float
+    ragas_answer_relevancy: float
+    ragas_context_precision: float
+    ragas_feedback: str
