@@ -26,12 +26,7 @@ export interface SSEEvent {
   data?: string
 }
 
-export interface SourceInfo {
-  chunk_id: string
-  document_id: string
-  filename: string
-  page_numbers: number[]
-}
+export type SourceInfo = components['schemas']['SourceInfoResponse']
 
 const client = createClient<paths>({
   baseUrl: '',

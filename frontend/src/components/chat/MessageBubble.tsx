@@ -41,7 +41,7 @@ export function MessageBubble({ message, kbId }: MessageBubbleProps) {
     if (message.sources) {
       for (const s of message.sources) {
         if (s.filename) {
-          map.set(s.filename, s as SourceInfo)
+          map.set(s.filename, s)
         }
       }
     }
@@ -76,7 +76,7 @@ export function MessageBubble({ message, kbId }: MessageBubbleProps) {
           </div>
         )}
         {message.sources && message.sources.length > 0 && (
-          <Sources sources={message.sources as SourceInfo[]} kbId={kbId} />
+          <Sources sources={message.sources} kbId={kbId} />
         )}
       </div>
     </div>

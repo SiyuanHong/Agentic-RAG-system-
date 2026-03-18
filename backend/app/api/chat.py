@@ -37,11 +37,18 @@ class ConversationResponse(BaseModel):
     kb_id: uuid.UUID
 
 
+class SourceInfoResponse(BaseModel):
+    chunk_id: str
+    document_id: str
+    filename: str
+    page_numbers: list[int] = []
+
+
 class MessageResponse(BaseModel):
     id: uuid.UUID
     role: MessageRole
     content: str
-    sources: list[dict] | None = None
+    sources: list[SourceInfoResponse] | None = None
 
 
 class ChatRequest(BaseModel):
