@@ -20,9 +20,9 @@ Agentic RAG is a full-stack document intelligence system which can be customized
 
 ## Screenshots
 
-| Login | Main Dashboard | Interactive API Docs |
-|:---:|:---:|:---:|
-| ![Login](ScreenShot/Login.png) | ![Main Dashboard](ScreenShot/main%20dashboard.png) | ![API Docs](ScreenShot/Interactive%20API%20documents%20.png) |
+| Login | Main Dashboard | Applying Skills | Interactive API Docs |
+|:---:|:---:|:---:|:---:|
+| ![Login](ScreenShot/Login.png) | ![Main Dashboard](ScreenShot/main%20dashboard.png) | ![Applying Skills](ScreenShot/applying%20skills%20.png) | ![API Docs](ScreenShot/Interactive%20API%20documents%20.png) |
 
 ---
 
