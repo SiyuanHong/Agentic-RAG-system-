@@ -18,10 +18,19 @@ Agentic RAG is a full-stack document intelligence system which can be customized
 
 ---
 
+## Screenshots
+
+| Login | Main Dashboard | Interactive API Docs |
+|:---:|:---:|:---:|
+| ![Login](ScreenShot/Login.png) | ![Main Dashboard](ScreenShot/main%20dashboard.png) | ![API Docs](ScreenShot/Interactive%20API%20documents%20.png) |
+
+---
+
 ## Key Features
 
 - **Self-correcting agent loop** — Router &rarr; Retriever &rarr; Answerer &rarr; Evaluator &rarr; Checker with feedback loops (max 3 iterations)
-- **Extensible Agent Personas** — Inject domain expertise by uploading custom .md skill files. The system automatically indexes and prioritizes user-provided knowledge for specialized reasoning.
+- **Knowledge base management** — Build and manage multiple knowledge bases per user, each with its own set of uploaded documents and isolated data
+- **Extensible Agent Personas** — Upload custom `.md` skill files that can be combined with any knowledge base, allowing the same documents to power different specialized reasoning styles for versatile domain expertise
 - **Automated quality gates** — Ragas evaluation (Faithfulness, Relevancy, Context Precision); faithfulness > 0.9 bypasses checker
 - **3-stage hybrid search** — BM25 (pg_search) + HNSW vector (pgvector) &rarr; Reciprocal Rank Fusion &rarr; Cohere rerank
 - **Semantic caching** — Redis VSS with cosine > 0.95 threshold; near-duplicate queries skip the full pipeline
