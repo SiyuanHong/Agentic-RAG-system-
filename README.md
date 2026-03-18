@@ -264,11 +264,7 @@ make dev    # docker compose up -d (uses override for dev mode)
 | Phoenix (traces) | http://localhost:6006 |
 | Traefik Dashboard | http://localhost:8080 |
 
-Run database migrations:
-
-```bash
-make migrate    # alembic upgrade head inside the backend container
-```
+Database migrations run automatically on container startup via `entrypoint.sh`.
 
 ### Backend Development (outside Docker)
 
