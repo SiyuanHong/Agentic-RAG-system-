@@ -20,7 +20,7 @@ export function ChatWindow({ kbId, conversationId }: { kbId: string; conversatio
   const [isStreaming, setIsStreaming] = useState(false)
   const [isCacheHit, setIsCacheHit] = useState(false)
   const [input, setInput] = useState('')
-  const [currentSources, setCurrentSources] = useState<SourceInfo[]>([])
+  const [, setCurrentSources] = useState<SourceInfo[]>([])
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 

@@ -52,26 +52,32 @@ export function ThinkingStream({
   )
 }
 
-function StepDetail({ step }: { step: ThinkingStep }) {
+function parseStepData(data: string): Record<string, unknown> | null {
   try {
-    const parsed = JSON.parse(step.data)
-    if (step.node === 'retrieve' && parsed.retrieved_chunks) {
-      return (
-        <span className="text-muted-foreground">
-          — found {parsed.retrieved_chunks.length} chunks
-        </span>
-      )
-    }
-    if (step.node === 'checker' && parsed.checker_result) {
-      return (
-        <span className="text-muted-foreground">
-          — {parsed.checker_result}
-          {parsed.iteration_count ? ` (iter ${parsed.iteration_count})` : ''}
-        </span>
-      )
-    }
+    return JSON.parse(data) as Record<string, unknown>
   } catch {
-    // not JSON
+    return null
+  }
+}
+
+function StepDetail({ step }: { step: ThinkingStep }) {
+  const parsed = parseStepData(step.data)
+  if (!parsed) return null
+
+  if (step.node === 'retrieve' && Array.isArray(parsed.retrieved_chunks)) {
+    return (
+      <span className="text-muted-foreground">
+        — found {parsed.retrieved_chunks.length} chunks
+      </span>
+    )
+  }
+  if (step.node === 'checker' && parsed.checker_result) {
+    return (
+      <span className="text-muted-foreground">
+        — {String(parsed.checker_result)}
+        {parsed.iteration_count ? ` (iter ${String(parsed.iteration_count)})` : ''}
+      </span>
+    )
   }
   return null
 }

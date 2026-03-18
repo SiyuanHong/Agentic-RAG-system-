@@ -9,7 +9,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ${{ github.repository }}
 
 jobs:
   build-push:
@@ -22,6 +21,9 @@ jobs:
         service: [backend, frontend]
     steps:
       - uses: actions/checkout@v4
+
+      - name: Lowercase image prefix
+        run: echo "IMAGE_PREFIX=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
 
       - uses: docker/setup-buildx-action@v3
 
