@@ -18,8 +18,7 @@ function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleSubmit() {
     setLoading(true)
     try {
       const res = await login(email, password)
@@ -39,7 +38,7 @@ function LoginPage() {
         <CardDescription>Enter your credentials to continue</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -47,7 +46,6 @@ function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
             />
           </div>
           <div className="space-y-2">
@@ -57,13 +55,12 @@ function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
             />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="button" className="w-full" disabled={loading} onClick={handleSubmit}>
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
-        </form>
+        </div>
         <p className="mt-4 text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{' '}
           <Link to="/register" className="text-primary underline">

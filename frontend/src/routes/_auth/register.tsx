@@ -18,8 +18,7 @@ function RegisterPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleSubmit() {
     setLoading(true)
     try {
       const res = await register(email, password)
@@ -39,7 +38,7 @@ function RegisterPage() {
         <CardDescription>Enter your details to get started</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -47,7 +46,6 @@ function RegisterPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
             />
           </div>
           <div className="space-y-2">
@@ -57,14 +55,12 @@ function RegisterPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="button" className="w-full" disabled={loading} onClick={handleSubmit}>
             {loading ? 'Creating account...' : 'Create Account'}
           </Button>
-        </form>
+        </div>
         <p className="mt-4 text-center text-sm text-muted-foreground">
           Already have an account?{' '}
           <Link to="/login" className="text-primary underline">
