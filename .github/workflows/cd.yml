@@ -22,8 +22,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Lowercase image prefix
-        run: echo "IMAGE_PREFIX=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+      - name: Sanitize image prefix
+        run: |
+          # Lowercase and strip trailing hyphens from each path segment
+          PREFIX="${GITHUB_REPOSITORY,,}"
+          PREFIX=$(echo "$PREFIX" | sed 's/-\+\//\//g; s/-\+$//')
+          echo "IMAGE_PREFIX=$PREFIX" >> "$GITHUB_ENV"
 
       - uses: docker/setup-buildx-action@v3
 
