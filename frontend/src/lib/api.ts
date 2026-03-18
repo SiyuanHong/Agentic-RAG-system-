@@ -35,7 +35,9 @@ const client = createClient<paths>({
 // Auth middleware: attach JWT + handle 401 + proactive expiry check
 client.use({
   async onRequest({ request }) {
-    if (!isTokenValid()) {
+    const url = new URL(request.url, window.location.origin)
+    const isAuthRoute = url.pathname.startsWith('/auth/')
+    if (!isAuthRoute && !isTokenValid()) {
       clearToken()
       window.location.href = '/login'
       throw new Error('Token expired')
@@ -46,8 +48,10 @@ client.use({
     }
     return request
   },
-  async onResponse({ response }) {
-    if (response.status === 401) {
+  async onResponse({ request, response }) {
+    const url = new URL(request.url, window.location.origin)
+    const isAuthRoute = url.pathname.startsWith('/auth/')
+    if (!isAuthRoute && response.status === 401) {
       clearToken()
       window.location.href = '/login'
     }
@@ -57,11 +61,21 @@ client.use({
 
 // ─── Auth ──────────────────────────────────────────────
 
+function extractErrorMessage(error: unknown, fallback: string): string {
+  const err = error as Record<string, unknown> | undefined
+  if (err?.detail && typeof err.detail === 'string') return err.detail
+  if (err?.detail && Array.isArray(err.detail)) {
+    const first = err.detail[0] as Record<string, unknown> | undefined
+    if (first?.msg && typeof first.msg === 'string') return first.msg
+  }
+  return fallback
+}
+
 export async function login(email: string, password: string) {
   const { data, error } = await client.POST('/auth/login', {
     body: { email, password },
   })
-  if (error) throw new Error('Login failed')
+  if (error) throw new Error(extractErrorMessage(error, 'Login failed'))
   return data
 }
 
@@ -69,7 +83,7 @@ export async function register(email: string, password: string) {
   const { data, error } = await client.POST('/auth/register', {
     body: { email, password },
   })
-  if (error) throw new Error('Registration failed')
+  if (error) throw new Error(extractErrorMessage(error, 'Registration failed'))
   return data
 }
 
